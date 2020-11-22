@@ -22,6 +22,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 __email__= 'vennemann@fh-muenster.de'
 
+mask = [[]]
+
+settings = {}
+
 example_user_function='''
 filelistbox = self.get_filelistbox()
 properties  = self.p
@@ -141,6 +145,18 @@ class OpenPivParams():
                  'filenames', # label
                  None],       # help (tooltip)
             
+            'images':
+                [1012, 'dummy', [], 
+                 None,
+                 None,
+                 None],
+            
+            'img_preproc':
+                [1013, 'dummy', settings, 
+                 None,
+                 None,
+                 None],
+            
             'general_frame':
                 [1015, 'labelframe', None, 
                  None,
@@ -151,6 +167,11 @@ class OpenPivParams():
                 [1020, 'bool', 'True', None,
                  'Enable popup warnings',
                  'Enable popup warning messages (recommended).'],
+            
+            'pop_up_info':
+                [1025, 'bool', 'True', None,
+                 'Enable popup info',
+                 'Enable popup information messages.'],
             
             'multicore_frame':
                 [1030, 'sub_labelframe', None, 
@@ -176,7 +197,7 @@ class OpenPivParams():
                  None],
             
             'sequence':
-                [1050, 'sub', '(1+2),(3+4)', 
+                [1050, 'sub', '(1+2),(2+3)', 
                  ('(1+2),(2+3)','(1+2),(3+4)'),
                  'sequence order',
                  'Select sequence order for evaluation.'],
@@ -196,13 +217,15 @@ class OpenPivParams():
             
             'navi_pattern':
                 [1110, 'sub',
-                 'png$, tif$, bmp$, pgm$, vec$, ' +
+                 'png$, tif$, tiff$, TIF$, bmp$, pgm$, jpg$, jpeg$' +
+                 'vec$, '
                  'DCC_[0-9]+\.vec$, ' +
                  'FFT_[0-9]+\.vec$, ' +
+                 'subvel\.vec$, ' +
                  'sig2noise\.vec$, ' +
-                 'std_thrhld\.vec, ' +
-                 'med_thrhld\.vec, ' +
-                 'glob_thrhld\.vec, ' +
+                 'std_thrhld\.vec$, ' +
+                 'med_thrhld\.vec$, ' +
+                 'glob_thrhld\.vec$, ' +
                  'repl\.vec$, ' +
                  'smthn\.vec$ ',
                  None,
@@ -218,7 +241,7 @@ class OpenPivParams():
                  None],
             
             'load_settings':
-                [1210, 'sub_bool', False, None,
+                [1210, 'sub_bool', True, None,
                  'settings for using pandas',
                  'Individual settings ' +
                  'for loading files using pandas.'],
@@ -234,7 +257,10 @@ class OpenPivParams():
                  'Decimal separator for floating point numbers.'],
             
             'sep':
-                [1213, 'sub', 'tab', (',', ';', 'space', 'tab'),
+                [1213, 'sub', 'tab', (',', 
+                                      ';', 
+                                      'space', 
+                                      'tab'),
                  'column separator',
                  'Column separator.'],
             
@@ -242,15 +268,13 @@ class OpenPivParams():
                 [1214, 'sub_bool', False, None,
                  'read header', 
                  'Read header. ' + 
-                 'If chosen, first line will be interpreted as the header.' + 
-                 'Otherwise first line will be replaced with header names' +
-                 'specified in the text field below.'],
+                 'If chosen, first line will be interpreted as the header'],
             
             'header_names':
-                [1215, 'sub', 'x,y,vx,vy,val,sig2noise', None,
+                [1215, 'sub', 'x,y,vx,vy,mask,sig2noise', None,
                  'specify header names',
                  'Specify comma separated list of column names.' +
-                 'Example: x,y,vx,vy,sig2noise'],
+                 'Example: x,y,vx,vy,mask,sig2noise'],
             
             'save_sub_frame':
                 [1300, 'sub_labelframe', None, 
@@ -266,7 +290,10 @@ class OpenPivParams():
                  'automatically.'],
             
             'separator':
-                [1320, 'sub', 'tab', (',', ';', 'space', 'tab'),
+                [1320, 'sub', 'tab', (',',
+                                      ';', 
+                                      'space', 
+                                      'tab'),
                  'delimiter',
                  'Delimiter.'],
             
@@ -277,233 +304,257 @@ class OpenPivParams():
                  None],
             
             'matplot_intensity':
-                [2032, 'sub_int', 255, None,
+                [1510, 'sub_int', 255, None,
                  'reference intensity',
                  'Define a reference intensity for the plotting of images.'],
             
-            'image_plotting_sub_frame':
-                [1500, 'sub_labelframe', None, 
-                 None,
-                 'image plotting',
-                 None],
+            #'expand_figure': # failed test. Needs more testing.
+            #    [1520, 'sub_bool', False, None,
+            #     'expand figure',
+            #     'Expand the image so that it fills more/most of the plotting canvas (requires restart to deactivate).'],
             
-            'matplot_intensity':
-                [2032, 'sub_int', 255, None,
-                 'reference intensity',
-                 'Define a reference intensity for the plotting of images.'],
-
+            
+            
             # preprocessing
             'preproc':
                 [2000, None, None, None,
                  'Preprocessing',
                  None],
             
-            'preprocess_frame':
-                [2005, 'labelframe', None, 
-                 None,
-                 'Preprocessing',
+            'exclusions_frame':
+                [2005, 'labelframe', None, None,
+                 'Exclusions',
                  None],
             
-            'data-type':
-                [2010, 'label', None, None,
-
-                 'All images are normalized to [0,1] float, \npreprocessed, ' +
-                 'and resized to user defined value.',
-                 None],
-            
-            'Invert_spacer':
-                [2015, 'h-spacer', None, 
-                 None,
-                 None,
-                 None],
-            
-            'invert':
-                [2020, 'bool', 'False', None,
-                 'invert image',
-                 'Invert image (see skimage invert()).'],
-            
-            'background_spacer':
-                [2025, 'h-spacer', None, 
-                 None,
-                 None,
-                 None],
-            
-            'background_subtract':
-                [2030, 'bool', 'False', None,
-                 'subtract background',
-                 'Subtract background via local sliding windows.'],
-            
-            'background_type':
-                [2031, 'str', 'global mean', ('global mean', 'minA - minB'),
-                 'background algorithm',
-                 'The algorithm used to generate the background which is subtracted ' +
-                 'from the piv images.'],
-            
-            'starting_frame':
-                [2032, 'int', 0, None,
-                 'starting image',
-                 'Defining the starting image of the background subtraction.'],
-            
-            'ending_frame':
-                [2033, 'int', 3, None,
-                 'ending image',
-                 'Defining the ending image of the background subtraction.'],
-            
-            'crop_ROI_spacer':
-                [2035, 'h-spacer', None, 
-                 None,
-                 None,
+            'mask':
+                [2007, 'dummy', mask, None,
+                 'object masking',
                  None],
             
             'crop_ROI':
-                [2040, 'bool', 'False', None,
+                [2010, 'bool', 'False', None,
                  'crop region of interest',
                  'Crop region of interest. Allows images with different sizes to ' +
                  'have a uniform size after cropping.'],
             
             'crop_roi-xminmax':
-                [2041, 'str', '200,800', None,
+                [2011, 'str', '200,800', None,
                  'x min/max',
                  "Define left/right side of region of interest by 'min,max'."],
             
             'crop_roi-yminmax':
-                [2042, 'str', '200,800', None,
+                [2012, 'str', '200,800', None,
                  'y min/max',
                  "Define top/bottom of region of interest by 'min,max.'"],
             
             'dynamic_mask_spacer':
-                [2045, 'h-spacer', None, 
+                [2015, 'h-spacer', None, 
                  None,
                  None,
                  None],
             
             'dynamic_mask':
-                [2050, 'bool', 'False', None,
+                [2020, 'bool', 'False', None,
                  'dynamic masking',
                  'Dynamic masking for masking of images. \n' +
                  'Warning: This is still in testing and is not recommended for use.'],
             
             'dynamic_mask_type':
-                [2051, 'str', 'edge', 
+                [2021, 'str', 'edge', 
                  ('edge', 'intensity'),
                  'mask type',
                  'Defining dynamic mask type.'],
             
             'dynamic_mask_threshold':
-                [2052, 'float', 0.01, None,
+                [2022, 'float', 0.01, None,
                  'mask threshold',
                  'Defining threshold of dynamic mask.'],
             
             'dynamic_mask_size':
-                [2053, 'int', 7, None,
+                [2023, 'int', 7, None,
                  'mask filter size',
                  'Defining size of the masks.'],
             
-            'CLAHE_spacer':
-                [2055, 'h-spacer', None, 
+            'apply-spacer':
+                [2025, 'h-spacer', None, 
                  None,
                  None,
                  None],
             
-            'CLAHE':
-                [2060, 'bool', 'True', None,
-                 'CLAHE filter',
-                 'Contrast Limited Adaptive Histogram Equalization filter ' +
-                 '(see skimage adapthist()).'],
-            
-            'CLAHE_first':
-                [2061, 'bool', 'False', None,
-                 'perform CLAHE before high pass',
-                 'Perform CLAHE filter before Gaussian high pass filters.'],
-            
-            'CLAHE_auto_kernel':
-                [2062, 'bool', True, None,
-                 'automatic kernel sizing',
-                 'Have the kernel automatically sized to 1/8 width and height of the image.'],
-            
-            'CLAHE_kernel':
-                [2063, 'int', 20, None,
-                 'kernel size',
-                 'Defining the size of the kernel for CLAHE.'],
-            
-            'Gaussian_UnSharp_spacer':
-                [2066, 'h-spacer', None, 
-                 None,
-                 None,
+            'preproc-filtering':
+                [2100, None, None, None,
+                 'Filtering',
                  None],
             
-            'Gaussian_UnSharp':
-                [2070, 'bool', 'False', None,
-                 'Gaussian high pass filter',
-                 'A simple subtracted Gaussian high pass filter (see skimage unsharp_mask()).'],
-            
-            'Gus_radius':
-                [2071, 'int', 5, None,
-                 'sigma',
-                 'Defining the sigma size of the subtracted gaussian filter in the ' + 
-                 'high pass filter (positive ints only).'],
-            
-            'intensity_threshold_spacer':
-                [2075, 'h-spacer', None, 
+            'preprocess_frame':
+                [2105, 'labelframe', None, 
                  None,
-                 None,
+                 'Filters',
                  None],
             
-            'intensity_cap_filter':
-                [2080, 'bool', 'False', None,
-                 'intensity capping',
-                 'Simple global intesity cap filter. ' +
-                 'Masked pixels are set to the mean pixel intensity.'],
-            
-            'ic_mult':
-                [2081, 'float', 2, None,
-                 'std multiplication',
-                 'Multiply the standard deviation of the pixel intensities ' +
-                 'to get a higher cap value.'],
-            
-            'Gaussian_lp_spacer':
-                [2085, 'h-spacer', None, 
-                 None,
-                 None,
+            'filter_process':
+                [2110, 'label', None, None,
+                 'All images are normalized to [0,1] float, \npreprocessed, and resized to user defined value.',
                  None],
             
-            'gaussian_filter':
-                [2090, 'bool', 'False', None,
-                 'Gaussian filter',
-                 'Standard Gaussian blurring filter (see scipy gaussian_filter()).'],
-            
-            'gf_sigma':
-                [2095, 'int', 10, None,
-                 'sigma',
-                 'Defining the sigma size for gaussian blur filter.'],
-            
-            'intensity_clip_spacer':
-                [2100, 'h-spacer', None, 
-                 None,
-                 None,
-                 None],
-            
-            'intensity_clip':
-                [2105, 'bool', 'False', None,
-                 'intensity clip',
-                 'Any intensity less than the threshold is set to zero.'],
-            
-            'intensity_clip_min':
-                [2110, 'int', 255, None,
-                 'min intensity',
-                 'Any intensity less than the threshold is set to zero with respect to ' +
-                 'the resized image inntensities.'],
-            
-            'img_int_resize_spacer':
+            'Invert_spacer':
                 [2115, 'h-spacer', None, 
                  None,
                  None,
                  None],
             
+            'invert':
+                [2120, 'bool', 'False', None,
+                 'invert image',
+                 'Invert image (see skimage invert()).'],
+            
+            'background_spacer':
+                [2125, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
+            'background_subtract':
+                [2130, 'bool', 'False', None,
+                 'subtract background',
+                 'Subtract background via local sliding windows.'],
+            
+            'background_type':
+                [2131, 'str', 'global mean', ('global mean', 
+                                              'min of A and B'),
+                 'background algorithm',
+                 'The algorithm used to generate the background which is subtracted from the piv images.'],
+            
+            'starting_frame':
+                [2132, 'int', 0, None,
+                 'starting image',
+                 'Defining the starting image of the background subtraction.'],
+            
+            'ending_frame':
+                [2133, 'int', 5, None,
+                 'ending image',
+                 'Defining the ending image of the background subtraction.'],
+            
+            'CLAHE_spacer':
+                [2135, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
+            'CLAHE':
+                [2140, 'bool', 'True', None,
+                 'CLAHE filter',
+                 'Contrast Limited Adaptive Histogram Equalization filter (see skimage adapthist()).'],
+            
+            'CLAHE_first':
+                [2141, 'bool', 'False', None,
+                 'perform CLAHE before high pass',
+                 'Perform CLAHE filter before Gaussian high pass filters.'],
+            
+            'CLAHE_auto_kernel':
+                [2142, 'bool', True, None,
+                 'automatic kernel sizing',
+                 'Have the kernel automatically sized to 1/8 width and height of the image.'],
+            
+            'CLAHE_kernel':
+                [2143, 'int', 20, None,
+                 'kernel size',
+                 'Defining the size of the kernel for CLAHE.'],
+            
+            'CLAHE_clip':
+                [2143, 'int', 1, None,
+                 'contrast',
+                 'The amount of contrast to be applied to the image with higher the number, the more contrast. ' +
+                 '(ints 1-1000)'],
+            
+            'high_pass_filter_spacer':
+                [2145, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
+            'high_pass_filter':
+                [2150, 'bool', 'False', None,
+                 'Gaussian high pass filter',
+                 'A simple subtracted Gaussian high pass filter.'],
+            
+            'hp_sigma':
+                [2151, 'int', 5, None,
+                 'sigma',
+                 'Defining the sigma size of the subtracted gaussian filter in the ' + 
+                 'high pass filter (positive ints only).'],
+            
+            'hp_clip':
+                [2152, 'bool', 'True', None,
+                 'clip at zero',
+                 'Set all values less than zero to zero.'],
+            
+            'intensity_threshold_spacer':
+                [2165, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
+            'intensity_cap_filter':
+                [2170, 'bool', 'False', None,
+                 'intensity capping',
+                 'Simple global intesity cap filter. Masked pixels are set to the mean pixel intensity.'],
+            
+            'ic_mult':
+                [2171, 'float', 2, None,
+                 'std multiplication',
+                 'Multiply the standard deviation of the pixel intensities to get a higher cap value.'],
+            
+            'Gaussian_lp_spacer':
+                [2175, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
+            'gaussian_filter':
+                [2180, 'bool', 'False', None,
+                 'Gaussian filter',
+                 'Standard Gaussian blurring filter (see scipy gaussian_filter()).'],
+            
+            'gf_sigma':
+                [2181, 'int', 10, None,
+                 'sigma',
+                 'Defining the sigma size for gaussian blur filter.'],
+            
+            'intensity_clip_spacer':
+                [2185, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
+            'intensity_clip':
+                [2190, 'bool', 'False', None,
+                 'intensity clip',
+                 'Any intensity less than the threshold is set to zero.'],
+            
+            'intensity_clip_min':
+                [2191, 'int', 20, None,
+                 'min intensity',
+                 'Any intensity less than the threshold is set to zero with respect to ' +
+                 'the resized image inntensities.'],
+            
+            'img_int_resize_spacer':
+                [2195, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
             'img_int_resize':
-                [2120, 'int', 255, None,
+                [2197, 'int', 255, None,
                  'resize intensity',
-                 'Resize the image intensity to \n[0,x], where x is a user defined value.'],
+                 'Resize the max image intensity to \na user defined value.'],
+            
+            'apply-spacer2':
+                [2199, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
             
             # processing
             'piv':
@@ -526,25 +577,28 @@ class OpenPivParams():
                  'search area. \n' +
                  'FFT WinDef: ' +
                  'Fast Fourier Transforms with window deformation ' +
-                 '(recommended).'],
+                 '(recommended). \n'
+                 'Important: FFT WinDef evaluates images with origin at top left.' +
+                 'Direct correlation evaluates images with origin at bottom left.'],
             
             'corr_method':
-                [3020, 'str', 'circular',
-                 ('circular', 'linear'),
+                [3020, 'str', 'circular', ('circular', 
+                                           'linear'),
                  'correlation method',
                  'Correlation method. Circular is no padding and' + 
                  'linear is zero padding (applies to Windef).'],
             
             'subpixel_method':
-                [3030, 'str', 'gaussian',
-                 ('centroid', 'gaussian', 'parabolic'),
+                [3030, 'str', 'gaussian', ('centroid', 
+                                           'gaussian', 
+                                           'parabolic'),
                  'subpixel method',
                  'Fit function for determining the subpixel position ' +
                  'of the correlation peak.'],
             
             'sig2noise_method':
-                [3040, 'string', 'peak2peak',
-                 ('peak2peak', 'peak2mean'),
+                [3040, 'string', 'peak2peak', ('peak2peak',
+                                               'peak2mean'),
                  'signal2noise calc. method',
                  'Calculation method for the signal to noise ratio.'],
             
@@ -557,10 +611,10 @@ class OpenPivParams():
             'adv_interpolation_order':
                 [3050, 'int', 3, (0,1,2,3,4,5),
                  'interpolation order',
-                 'Interpolation oder of the spline window deformation. \n' +
-                 '>>0<< yields zero order nearest interpolation \n' +
-                 '>>1<< yields first order linear interpolation \n'
-                 '>>2<< yields second order quadratic interpolation \n'
+                 'Interpolation oder of the window deformation. \n' +
+                 '»0« yields zero order nearest interpolation \n' +
+                 '»1« yields first order linear interpolation \n'
+                 '»2« yields second order quadratic interpolation \n'
                  'and so on...'],
             
             'calibration_spacer':
@@ -577,7 +631,9 @@ class OpenPivParams():
             'scale':
                 [3070, 'float', 1.0, None,
                  'scale',
-                 'Interframing scaling in pix/m'],
+                 'Interframing scaling in pix/m \n' +
+                 'Important: The scaling ratio is applied before dt, so when getting the proper scale, ' +
+                 'set »dt« to 1'],
             
             'flip_spacer':
                 [3075, 'h-spacer', None, 
@@ -585,42 +641,24 @@ class OpenPivParams():
                  None,
                  None],
             
-            'flip_u':
-                [3080, 'bool', 'True', None,
-                 'flip u-component',
-                 'flip u-component array when saving RAW results.'],
-            
-            'flip_v':
-                [3085, 'bool', 'True', None,
-                 'flip v-component',
-                 'flip v-component array when saving RAW results.'],
-            
-            'invert_spacer':
-                [3090, 'h-spacer', None, 
-                 None,
-                 None,
-                 None],
-            
-            'invert_u':
-                [3095, 'bool', 'False', None,
-                 'invert u-component',
-                 'Invert (negative) u-component when saving RAW results.'],
-            
-            'invert_v':
-                [3096, 'bool', 'True', None,
-                 'invert v-component',
-                 'Invert (negative) v-component when saving RAW results.'],
+            'origin':
+                [3080, 'str', 'top left', ('top left',
+                                           'bottom left'),
+                 'origin (0,0): ',
+                 'Set the origin to either top or bottom left.'],
             
             'swap_files_spacer':
-                [3097, 'h-spacer', None, 
+                [3085, 'h-spacer', None, 
                  None,
                  None,
                  None],
             
             'swap_files':
-                [3098, 'bool', 'False', None,
+                [3090, 'bool', 'False', None,
                  'swap A/B files',
                  'Swap A/B files when analyzing.'],
+            
+            
             
             'windowing':
                 [3100, None, None, None,
@@ -635,34 +673,36 @@ class OpenPivParams():
             
             'search_area':
                 [3110, 'int', 64, (16,32,64,128,256),
-                 'search area',
+                 'search area [px]',
                  'Size of square search area in pixel for ' +
                  'Single-pass DCC method.'], 
             
             'corr_window':
                 [3120, 'int', 32, (8,16,32,64,128),
-                 'interrogation window',
+                 'interrogation window [px]',
                  'Size of the final interrogation windows in pixels.'],
             
             'overlap':
                 [3130, 'int', 16, (4,8,16,32,64),
-                 'overlap',
+                 'overlap [px]',
                  'Size of the final overlap in pixels.'],
             
             'coarse_factor':
-                [3140, 'int', 2, (1, 2, 3, 4, 5),
+                [3140, 'int', 3, (1, 2, 3, 4, 5),
                  'number of passes',
                  'Example: A window size of 16 and a number of refinement steps ' +
-                 'of 3 gives an window size of 64×64 in the fist pass, 32×32 in ' +
+                 'of 3 gives an window size of 64×64 in the first pass, 32×32 in ' +
                  'the second pass and 16×16 pixel in the final pass. (Applies ' +
                  'to FFT WinDef methods only.)'],
             
             'grid_refinement':
-                [3150, 'str', 'all passes', ('all passes', '2nd pass on', 'none'),
+                [3150, 'str', 'all passes', ('all passes', 
+                                             '2nd pass on', 
+                                             'none'),
                  'grid refinement',
                  'Refine the interregationg grid every PIV pass when performing multipass FFT. \n' +
-                 '>>all passes<< refines all passes. \n'
-                 '>>2nd pass on<< refines second pass on.'],
+                 '»all passes« refines all passes. \n'
+                 '»2nd pass on« refines second pass on.'],
             
             'sub_window_frame':
                 [3200, 'sub_labelframe', None, 
@@ -683,12 +723,12 @@ class OpenPivParams():
             
             'corr_window_1':
                 [3220, 'sub_int', 256, None,
-                 'interrogation window',
+                 'interrogation window [px]',
                  'Interrogation window for the first pass.'],
             
             'overlap_1':
                 [3230, 'sub_int', 128, None,
-                 'overlap',
+                 'overlap [px]',
                  'Size of the overlap of the first pass in pixels. The overlap will then be ' +
                  'calculated for the following passes.'],
             
@@ -705,7 +745,7 @@ class OpenPivParams():
             
             'corr_window_2':
                 [3240, 'sub_int', 128, None,
-                 'interrogation window',
+                 'interrogation window [px]',
                  'Interrogation window for the second pass.'],
             
             'pass_3_spacer':
@@ -721,7 +761,7 @@ class OpenPivParams():
             
             'corr_window_3':
                 [3250, 'sub_int', 64, None,
-                 'interrogation window',
+                 'interrogation window [px]',
                  'Interrogation window for the third pass.'],
             
             'pass_4_spacer':
@@ -737,7 +777,7 @@ class OpenPivParams():
             
             'corr_window_4':
                 [3260, 'sub_int', 32, None,
-                 'interrogation window',
+                 'interrogation window [px]',
                  'Interrogation window for the fourth pass.'],
             
             'pass_5_spacer':
@@ -753,7 +793,7 @@ class OpenPivParams():
             
             'corr_window_5':
                 [3270, 'sub_int', 16, None,
-                 'interrogation window',
+                 'interrogation window [px]',
                  'Interrogation window for the fifth pass.'],
             
             'pass_6_spacer':
@@ -769,7 +809,7 @@ class OpenPivParams():
             
             'corr_window_6':
                 [3280, 'sub_int', 16, None,
-                 'interrogation window',
+                 'interrogation window [px]',
                  'Interrogation window for the sixth pass.'],
             
             'pass_7_spacer':
@@ -785,7 +825,7 @@ class OpenPivParams():
             
             'corr_window_7':
                 [3290, 'sub_int', 16, None,
-                 'interrogation window',
+                 'interrogation window [px]',
                  'Interrogation window for the seventh pass.'],
             
             # individual pass validations
@@ -800,8 +840,13 @@ class OpenPivParams():
                  'Validation',
                  None],
             
+            'validation_process':
+                [3306, 'label', None, None,
+                 'All results are processed before calibration, \nso the units entered will be pix/dt (unscaled).',
+                 None],
+            
             'piv_sub_frame1':
-                [3306, 'sub_labelframe', None, 
+                [3307, 'sub_labelframe', None, 
                  None,
                  'first pass validation',
                  None],
@@ -912,8 +957,9 @@ class OpenPivParams():
                  None],
             
             'adv_repl_method':
-                [3380, 'sub', 'localmean',
-                 ('localmean', 'disk', 'distance'),
+                [3380, 'sub', 'localmean', ('localmean',
+                                            'disk', 
+                                            'distance'),
                  'replacement method',
                  'Each NaN element is replaced by a weighed average' +
                  'of neighbours. Localmean uses a square kernel, ' +
@@ -939,7 +985,7 @@ class OpenPivParams():
                  None],
             
             'smoothn_each_pass':
-                [3390, 'sub_bool', False, None,
+                [3390, 'sub_bool', True, None,
                  'smoothen each pass',
                  'Smoothen each pass using openpiv.smoothn.'],
             
@@ -954,16 +1000,13 @@ class OpenPivParams():
                  'Activate robust in smoothen (minimizes influence of outlying data).'],
            
             'smoothn_val1':
-                [3393, 'sub_float', 1.0, None,
+                [3393, 'sub_float', 0.8, None,
                  'smoothing strength',
                  'Strength of smoothen script. Higher scalar number produces ' +
                   'more smoothed data.'],
             
-            # Analysis tab for when the analysis starts.
-            'analyze':
-                [3500, None, None, None,
-                 'Analyze',
-                 None],
+            
+            
             
             # validation/postprocessing
             'vld':
@@ -972,94 +1015,120 @@ class OpenPivParams():
                  None],
             
             'vld_frame':
-                [6001, 'labelframe', None, 
+                [6005, 'labelframe', None, 
                  None,
                  'Postprocess',
                  None],
             
-            'vld_sig2noise':
+            'sub_vel_background':
                 [6010, 'bool', False, None,
+                 'remove background velocity',
+                 'Subtract the background velocity from the PIV data.'],
+            
+            'set_mean':
+                [6011, 'bool', True, None,
+                 'set to mean',
+                 'Set the u and v variable to the mean for each result.'],
+            
+            'u-vel':
+                [6012, 'float', 0, None,
+                 'u velocity',
+                 'The scalar to be subtracted from the u-component.'],
+            
+            'v-vel':
+                [6013, 'float', 0, None,
+                 'v velocity',
+                 'The scalar to be subtracted from the v-component.'],
+            
+            's2n_spacer':
+                [6015, 'h-spacer', None, 
+                 None,
+                 None,
+                 None],
+            
+            'vld_sig2noise':
+                [6020, 'bool', False, None,
                  'signal to noise ratio validation',
                  'Validate the data based on the signal to nose ratio '+
                  'of the cross correlation.'],
             
             'sig2noise_threshold':
-                [6030, 'float', 1.5, None,
+                [6021, 'float', 1.5, None,
                  's2n threshold',
                  'Threshold for filtering based on signal to noise ' +
                  'ratio.'],
             
-            'horizontal_spacer11':
-                [6035, 'h-spacer', None, 
+            'global_std_spacer':
+                [6025, 'h-spacer', None, 
                  None,
                  None,
                  None],
             
             'vld_global_std':
-                [6040, 'bool', False, None,
+                [6030, 'bool', True, None,
                  'standard deviation validation',
                  'Validate the data based on a multiple of the '+
                  'standard deviation.'],
             
             'global_std_threshold':
-                [6050, 'float', 5.0, None,
+                [6031, 'float', 5.0, None,
                  'std threshold',
                  'Remove vectors, if the the sum of the squared ' +
                  'vector components is larger than the threshold ' +
                  'times the standard deviation of the flow field.'],
             
-            'horizontal_spacer12':
-                [6055, 'h-spacer', None, 
+            'local_med_spacer':
+                [6035, 'h-spacer', None, 
                  None,
                  None,
                  None],
             
             'vld_local_med':
-                [6060, 'bool', True, None,
+                [6040, 'bool', True, None,
                  'local median validation',
                  'Validate the data based on a local median ' +
                  'threshold.'],
             
             'local_median_threshold':
-                [6070, 'float', 1.2, None,
+                [6041, 'float', 1.2, None,
                  'local median threshold',
                  'Discard vector, if the absolute difference with ' +
                  'the local median is greater than the threshold. '], 
             
-            'horizontal_spacer13':
-                [6075, 'h-spacer', None, 
+            'global_thrsh_spacer':
+                [6045, 'h-spacer', None, 
                  None,
                  None,
                  None],
             
             'vld_global_thr':
-                [6080, 'bool', False, None,
+                [6050, 'bool', False, None,
                  'global threshold validation',
                  'Validate the data based on set global ' +
                  'thresholds.'],
             
             'MinU':
-                [6090, 'float', -30.0, None,
+                [6051, 'float', -30.0, None,
                  'min u',
                  'Minimum U allowable component.'], 
             
             'MaxU':
-                [6090, 'float', 30.0, None,
+                [6052, 'float', 30.0, None,
                  'max u',
                  'Maximum U allowable component.'],
             
             'MinV':
-                [6090, 'float', -30.0, None,
+                [6053, 'float', -30.0, None,
                  'min v',
                  'Minimum V allowable component.'],
             
             'MaxV':
-                [6090, 'float', 30.0, None,
+                [6054, 'float', 30.0, None,
                  'max v',
                  'Maximum V allowable component.'],
             
-            'horizontal_spacer14':
-                [6095, 'h-spacer', None, 
+            'repl_spacer':
+                [6055, 'h-spacer', None, 
                  None,
                  None,
                  None],
@@ -1070,8 +1139,9 @@ class OpenPivParams():
                  'Replace outliers.'],
             
             'repl_method':
-                [7020, 'str', 'localmean',
-                 ('localmean', 'disk', 'distance'),
+                [7020, 'str', 'localmean', ('localmean', 
+                                            'disk', 
+                                            'distance'),
                  'replacement method',
                  'Each NaN element is replaced by a weighed average' +
                  'of neighbours. Localmean uses a square kernel, ' +
@@ -1097,16 +1167,10 @@ class OpenPivParams():
                  None],
             
             'smoothn':
-                [7050, 'bool', True, None,
-                 'smoothn data',
-                 'Smoothn data using openpiv.smoothn.'],
+                [7050, 'bool', False, None,
+                 'smoothn results',
+                 'Smoothn post processed results using openpiv.smoothn.'],
             
-            'smoothn_type':
-                [7060, 'str', 'last pass', 
-                 ('last pass','each pass'),
-                 'smoothn vectors',
-                 'Smoothn data with openpiv.smoothn. <each pass> only applies to windef'],
-
             'robust':
                 [7070, 'bool', False, None,
                  'smoothn robust',
@@ -1125,10 +1189,9 @@ class OpenPivParams():
                  None],
             
             'average_results':
-                [7090, 'bool', True, None,
+                [7090, 'bool', False, None,
                  'average results',
-                 'Average all results in selected directory. ' +
-                 'Results in a single file with averaged results.'],
+                 'Average all results in selected directory. Results in a single file with averaged results.'],
             
             'delimiter_spacer':
                 [7095, 'h-spacer', None, 
@@ -1137,7 +1200,10 @@ class OpenPivParams():
                  None],
             
             'delimiter':
-                [7100, 'str', 'tab', (',', ';', 'space', 'tab'),
+                [7100, 'str', 'tab', (',', 
+                                      ';', 
+                                      'space', 
+                                      'tab'),
                  'delimiter',
                  'Delimiter.'],
             
@@ -1146,14 +1212,10 @@ class OpenPivParams():
                  None,
                  None,
                  None],
-            
-            'post_button':
-                [7110, 'post_button', None, 
-                 None,
-                 None,
-                 None],
                
-             # plotting
+            
+            
+            # plotting
             'plt':
                 [8000, None, None, None,
                  'Plot',
@@ -1166,142 +1228,231 @@ class OpenPivParams():
                  None],
             
             'plot_type':
-                [8010, 'str', 'vectors',
-                 ('vectors', 'contour', 'contour + vectors',
-                  'streamlines', 'histogram', 'profiles', 'scatter', 'line',
-                  'bar', 'density'),
+                [8010, 'str', 'contour + vectors', ('vectors', 
+                                          'contour', 
+                                          'contour + vectors', 
+                                          'streamlines', 
+                                          'histogram', 
+                                          'profiles', 
+                                          'scatter', 
+                                          'line',
+                                          #'bar', Failed testing (for Windows 10), simply locks GUI.
+                                          'density'),
                  'plot type',
-                 'Select, how to plot velocity data.'],
+                 'Select how to plot velocity data.'],
                 
+            'plot_title':
+                [8020, 'str', 'Title', None, 
+                 'diagram title', 
+                 'diagram title.'],
+                
+            #plot_derivatives':
+            #   [8075, 'str', 'None', ('None', 'Vorticity'),
+            #   'plot derivatives',
+            #   'Plot derivatives of the vector map (for vectors, countours, and streamlines only).'],
+            
+            'streamline_density':
+                [8095, 'str', '0.5, 1', None, 
+                 'streamline density',
+                 'streamline density. Can be one value (e.g. 1) or a couple' +
+                 ' of values for a range (e.g. 0.5, 1).'],
+                
+            'integrate_dir':
+                [8097, 'str', 'both', ('both', 
+                                       'forward',
+                                       'backward'),
+                 'streamline direction',
+                 'Integrate the streamline in forward, backward or both ' +
+                 'directions. default is both.'],
+            
+            
+            'statistics_frame':
+                [8105, 'labelframe', None, 
+                 None,
+                 'Statistics',
+                 None],
+            
             'u_data':
-                [8020, 'str', 'vx', None, 
-                 'col.-name for v_x',
-                 'column name for u-velocity component.' +
+                [8110, 'str', 'vx', None, 
+                 'column name for u-velocity component',
+                 'column name for the u-velocity component.' +
                  ' If unknown watch labbook entry.'],
             
             'v_data':
-                [8030, 'str', 'vy', None, 
-                 'col.-name for v_y',
+                [8120, 'str', 'vy', None, 
+                 'column name for v-veloctiy component',
                  'column name for v-velocity component.' +
                  ' If unknown watch labbook entry.' +
                  ' For histogram only the v-velocity component is needed.'],
                 
-            'plot_title':
-                [8040, 'str', 'Title', None, 
-                 'diagram title', 'diagram title.'],
-                
-            'plot_grid':
-                [8050, 'bool', True, None, 'grid', 
-                 'adds a grid to the diagram.'],
-                
-            'plot_legend':
-                [8060, 'bool', True, None, 'legend', 
-                 'adds a legend to the diagram.'],
-                
             'plot_scaling': 
-                [8070, 'str', 'None', ('None', 'logx', 'logy', 'loglog'),
+                [8130, 'str', 'None', ('None', 
+                                       'logx', 
+                                       'logy', 
+                                       'loglog'),
                  'axis scaling', 'scales the axes. logarithm scaling x-axis' +
                  ' --> logx; logarithm scaling y-axis --> logy; ' +
                  'logarithm scaling both axes --> loglog.'],
-                
+            
+            'histogram_type':
+                [8140, 'str', 'bar', ('bar', 
+                                      'barstacked', 
+                                      'step',
+                                      'stepfilled'), 
+                 'histogram type', 
+                 'Choose histogram type. Only available for histogram' + 
+                 'plot.'],
+            
+            'histogram_quantity':
+                [8150, 'str', 'v_x', ('v', 
+                                      'v_x',
+                                      'v_y'),
+                 'histogram quantity',
+                 'The absolute value of the velocity (v) or its x- ' +
+                 'or y-component (v_x or v_y).'], 
+            
+            'histogram_bins':
+                [8160, 'int', 20, None,
+                 'histogram number of bins',
+                 'Number of bins (bars) in the histogram.'],
+            
+            'profiles_orientation':
+                [8170, 'str', 'vertical', ('vertical', 
+                                           'horizontal'),
+                 'profiles orientation',
+                 'Plot v_y over x (horizontal) or v_x over y (vertical).'],
+            
+            'profiles_jump':
+                [8180, 'int', 1, None, 
+                 'profile density', 
+                 'The amount of profile lines (minimum of 1).'],
+            
             'plot_xlim':
-                [8080, 'str', '', None, 'limits for the x-axis', 
+                [8190, 'str', '', None, 
+                 'limits for the x-axis', 
                  'For implementation use (lower_limit, upper_limit).'],
             
             'plot_ylim':
-                [8085, 'str', '', None, 'limits for the y-axis',
+                [8200, 'str', '', None, 
+                 'limits for the y-axis',
                  'For implementation use (lower_limit, upper_limit).'],
-                
-            'color_map':
-                [8090, 'str', 'jet', ('jet','None','long rainbow','seismic','autumn','binary'),
-                 'Color map for streamline- \nand contour-plot', 'Color map '
-                 'for streamline- and contour-plot.'],
             
-            'extend_cbar':
-                [8091, 'bool', True, None,
-                'extend colorbar',
-                'Extend the top and bottom of the colorbar to accept out of range values.'],
-            'streamline_density':
-                [8095, 'str', '0.5, 1', None, 'streamline density',
-                 'streamline density. Can be one value (e.g. 1) or a couple' +
-                 ' of values for a range (e.g. 0.5, 1).'],
-                
-            'streamlines_color':
-                [8096, 'str', 'vy', ('vx', 'vy', 'v'), 'set colorbar to: ',
-                 'set colorbar to velocity components.'],
-                
-            'integrate_dir':
-                [8097, 'str', 'both', ('both', 'forward', 'backward'),
-                 'direction for integrating \nthe streamlines',
-                 'Integrate the streamline in forward, backward or both ' +
-                 'directions. default is both.'],
-                
+            
+            
+            'modify_plot_appearance':
+                [8500, None, None, None,
+                 'Plot',
+                 None],
+            
+            'modify_plot_frame':
+                [8505, 'labelframe', None, 
+                 None,
+                 'Modify Plot Appearance',
+                 None],
+            
+            'vector_subframe':
+                [8505, 'sub_labelframe', None, 
+                 None,
+                 'Vectors',
+                 None],
+            
             'vec_scale':
-                [8100, 'int', 100, None,
+                [8510, 'sub_int', 100, None,
                  'vector scaling',
                  'Velocity as a fraction of the plot width, e.g.: ' +
                  'm/s per plot width. Large values result in shorter ' +
                  'vectors.'],
             
             'vec_width':
-                [8110, 'float', 0.0025, None,
+                [8520, 'sub_float', 0.0025, None,
                  'vector line width',
                  'Line width as a fraction of the plot width.'],
-
+            
             'invalid_color':
-                [8120, 'dummy', 'red', None,
+                [8530, 'dummy', 'red', None,
                  None,
                  'Choose the color of the vectors'],
             
             'valid_color':
-                [8130, 'dummy', 'blue', None,
+                [8540, 'dummy', 'black', None,
                  None,
                  'Choose the color of the vectors'],
             
-            'invert_yaxis':
-                [8140, 'bool', True, None,
-                 'vector plot invert y-axis',
+            'invert_yaxis': # now applies to contours, so it is placed in the main labelframe
+                [8550, 'bool', True, None,
+                 'invert y-axis',
                  'Define the top left corner as the origin ' +
                  'of the vector plot coordinate sytem, ' +
                  'as it is common practice in image processing.'],
-                
-            'histogram_type':
-                [8200, 'str', 'bar', ('bar', 
-                                      'barstacked', 
-                                      'step',
-                                      'stepfilled'), 'histogram type', 
-                 'Choose histogram type. Only available for histogram' + 
-                 'plot.'],
             
-            'histogram_quantity':
-                [8210, 'str', 'v_x', ('v', 'v_x', 'v_y'),
-                 'histogram quantity',
-                 'The absolute value of the velocity (v) or its x- ' +
-                 'or y-component (v_x or v_y).'], 
+            'derived_subframe':
+                [8555, 'sub_labelframe', None, 
+                 None,
+                 'Derived Parameters',
+                 None],
             
-            'histogram_bins':
-                [8220, 'int', 20, None,
-                 'histogram number of bins',
-                 'Number of bins (bars) in the histogram.'],
+            'color_map':
+                [8560, 'sub', 'viridis', ('viridis',
+                                          'jet',
+                                          'short rainbow',
+                                          'long rainbow',
+                                          'seismic',
+                                          'autumn',
+                                          'binary'),
+                 'Color map', 'Color map for streamline- and contour-plot.'],
             
-            'profiles_orientation':
-                [8300, 'str', 'vertical', ('vertical', 'horizontal'),
-                 'profiles orientation',
-                 'Plot v_y over x (horizontal) or v_x over y (vertical).'],
+            'extend_cbar':
+                [8570, 'sub_bool', True, None,
+                'extend colorbar',
+                'Extend the top and bottom of the colorbar to accept out of range values.'],
+            
+            'velocity_color':
+                [8575, 'sub', 'v', ('vx', 
+                                    'vy', 
+                                    'v'),
+                 'set colorbar to: ',
+                 'Set colorbar to velocity components.'],
             
             'color_levels':
-                [8400, 'str', '10', None, 'number of color levels',
-                 'Select the number of color levels for contour plot!'],
+                [8580, 'sub', '30', None, 'number of color levels',
+                 'Select the number of color levels for contour plot.'],
+            
             'vmin':
-                [8410, 'str', '', None, 'minimum velocity for colormap',
+                [8590, 'sub', '', None, 
+                 'min velocity for colormap',
                  'minimum velocity for colormap (contour plot).'],
+            
             'vmax':
-                [8410, 'str', '', None, 'maximum velocity for colormap',
+                [8595, 'sub', '', None, 
+                 'max velocity for colormap',
                  'maximum velocity for colormap (contour plot).'],
+            
+            'statistics_subframe':
+                [8600, 'sub_labelframe', None, 
+                 None,
+                 'Statistics',
+                 None],
+            
+            'plot_grid':
+                [8610, 'sub_bool', True, None, 
+                 'grid', 
+                 'adds a grid to the diagram.'],
+                
+            'plot_legend':
+                [8620, 'sub_bool', True, None,
+                 'legend', 
+                 'adds a legend to the diagram.'],
+            
             # lab-book
             'lab_book':
                 [9000, None, None, None,
                  'Lab-Book',
+                 None],
+            
+            'lab_book_frame':
+                [9005, 'labelframe', None, 
+                 None,
+                 'Lab Book',
                  None],
             
             'lab_book_content':
@@ -1310,10 +1461,14 @@ class OpenPivParams():
                  None,
                  None,
                  None],
+            
             'data_information':
-                [9020, 'bool', False, None, 'log column information', 
+                [9020, 'bool', False, None, 
+                 'log column information', 
                  'shows column names, if you choose a file at the ' + 
                  'right side.'],
+            
+            
             
             # user-function
             'user_func':
@@ -1411,7 +1566,14 @@ class OpenPivParams():
         '''
         s = ''
         for key in self.default:
-            if group < self.index[key] < group+1000:
+            if (group < self.index[key] < group+1000
+                and self.type[key] not in [
+                    'labelframe', 
+                    'sub_labelframe', 
+                    'h-spacer', 
+                    'sub_h-spacer',
+                    'dummy'
+                    ]):
                 s = s + str(self.label[key]) + '\n' + \
                 '    ' + str.replace(str(self.help[key]), '\n', '\n    ') + '\n\n'
         return(s)

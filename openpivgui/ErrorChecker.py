@@ -16,10 +16,10 @@ def check_PIVprocessing(self): # check number of images, image types, and window
         raise Exception(message)
 
     # checking for images
-    message = "Please supply image files in 'bmp', 'tiff', 'tif', 'TIF', 'jpg', 'jpeg', 'png', 'pgm'."
+    message = "Please supply image files in 'bmp', 'tiff', 'tif', 'TIF', 'jpg', 'jpeg', 'png'."
     test = self.p['fnames'][0]
     ext = test.split('.')[-1]
-    if ext not in ['bmp', 'tiff', 'tif', 'TIF', 'jpg', 'jpeg', 'png', 'pgm']:
+    if ext not in ['bmp', 'tiff', 'tif', 'TIF', 'jpg', 'jpeg', 'png']:
         if self.p['warnings']:
             messagebox.showwarning(title = 'Error Message',
                                    message = message)
@@ -47,7 +47,7 @@ def check_PIVprocessing(self): # check number of images, image types, and window
                                                message = message)
                 raise ValueError(message)
             # making sure each pass has a decreasing interrogation window
-            Message = 'Plase make sure that the custom windowing is decresing with each pass.'
+            Message = 'Plase make sure that the custom windowing is decreasing with each pass.'
             window = self.p['corr_window_1']
             for i in range (2, 8):
                 if self.p['pass_%1d' % i]:

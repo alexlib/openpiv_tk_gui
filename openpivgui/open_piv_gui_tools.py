@@ -126,3 +126,47 @@ def get_dim(array):
 def save(x, y, u, v, mask, sig2noise, filename, fmt='%8.4f', delimiter = '\t'):
     out = np.vstack([m.ravel() for m in [x, y, u, v, mask, sig2noise]])
     np.savetxt(filename, out.T, fmt=fmt, delimiter=delimiter)
+
+    
+    
+def _round(number, decimals = 0):
+    multiplier = 10 **decimals
+    return(math.floor(number * multiplier + 0.5) / multiplier) 
+
+
+
+def resize_data(data):
+    try:
+        x = data.x
+        y = data.y
+        u = data.vx
+        v = data.vy
+        mask = data.mask
+        s2n = data.sig2noise
+
+        rows = np.unique(y).shape[0]
+        cols = np.unique(x).shape[0]
+
+        data.x = x.reshape(rows,cols)
+        data.y = y.reshape(rows,cols)
+        data.vx = u.reshape(rows,cols)
+        data.vy = v.reshape(rows,cols)
+        data.mask = mask.reshape(rows,cols)
+        data.sig2noise = s2n.reshape(rows,cols)
+        return(data)
+        
+    except:
+        print('Failed to load typevector or signal to noise. Defaulting to x,y,u,v.')
+        x = data.x
+        y = data.y
+        u = data.vx
+        v = data.vy
+
+        rows = np.unique(y).shape[0]
+        cols = np.unique(x).shape[0]
+
+        data.x = x.reshape(rows,cols)
+        data.y = y.reshape(rows,cols)
+        data.vx = u.reshape(rows,cols)
+        data.vy = v.reshape(rows,cols)
+        return(data)

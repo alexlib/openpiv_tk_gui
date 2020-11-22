@@ -45,7 +45,43 @@ class PostProcessing():
         if delimiter == 'space': delimiter = ' '
         
         
-        
+       
+    def sub_vel_background(self):
+        '''Subtract a reference velocity from the vector field'''
+        result_fnames = []
+        for i, f in enumerate(self.p['fnames']):
+            data = np.loadtxt(f)
+            u = data[:, 2]
+            v = data[:, 3]
+            
+            if self.p['set_mean']:
+                sub_u = u.mean()
+                sub_v = v.mean()
+                
+            else:
+                sub_u = self.p['u-vel']
+                sub_v = self.p['v-vel']
+                
+            u -= sub_u
+            v -= sub_v
+             
+            save_fname = create_save_vec_fname(
+                path=f,
+                postfix='_subvel')
+            
+            save(data[:, 0],
+                 data[:, 1],
+                 u, v,
+                 data[:, 4],
+                 data[:, 5],
+                 save_fname,
+                 delimiter = delimiter)
+            
+            result_fnames.append(save_fname)
+        return(result_fnames)
+    
+    
+    
     def sig2noise(self):
         '''Filter vectors based on the signal to noise threshold.
 
@@ -55,21 +91,24 @@ class PostProcessing():
         result_fnames = []
         for i, f in enumerate(self.p['fnames']):
             data = np.loadtxt(f)
+            
             u, v, mask = piv_vld.sig2noise_val(
-                data[:, 2], data[:, 3], data[:, 5],
-                threshold=self.p['sig2noise_threshold'])
+                data[:, 2], data[:, 3],
+                data[:, 5],
+                threshold = self.p['sig2noise_threshold'])
             
             save_fname = create_save_vec_fname(
                 path=f,
                 postfix='_sig2noise')
             
-            save(x = data[:, 0],
-                      y = data[:, 1],
-                      u=u, v=v,
-                      mask=mask,
-                      sig2noise = data[:, 5],
-                      filename = save_fname,
-                      delimiter = delimiter)
+            save(data[:, 0],
+                 data[:, 1],
+                 u, v,
+                 data[:, 4] + mask,
+                 data[:, 5],
+                 save_fname,
+                 delimiter = delimiter)
+            
             result_fnames.append(save_fname)
         return(result_fnames)
 
@@ -85,19 +124,23 @@ class PostProcessing():
         result_fnames = []
         for i, f in enumerate(self.p['fnames']):
             data = np.loadtxt(f)
+            
             u, v, mask = piv_vld.global_std(
                 data[:, 2], data[:, 3],
                 std_threshold=self.p['global_std_threshold'])
+            
             save_fname = create_save_vec_fname(
                 path=f,
                 postfix='_std_thrhld')
+            
             save(data[:, 0],
-                      data[:, 1],
-                      u, v,
-                      mask,
-                      data[:, 5],
-                      save_fname,
-                      delimiter = delimiter)
+                 data[:, 1],
+                 u, v,
+                 data[:, 4] + mask,
+                 data[:, 5],
+                 save_fname,
+                 delimiter = delimiter)
+            
             result_fnames.append(save_fname)
         return(result_fnames)
     
@@ -112,20 +155,24 @@ class PostProcessing():
         result_fnames = []
         for i, f in enumerate(self.p['fnames']):
             data = np.loadtxt(f)
+            
             u, v, mask = piv_vld.global_val(
                 data[:, 2], data[:, 3],
                 u_thresholds=(self.p['MinU'],self.p['MaxU']),
                 v_thresholds=(self.p['MinV'],self.p['MaxV']))
+            
             save_fname = create_save_vec_fname(
                 path=f,
                 postfix='_glob_thrhld')
+            
             save(data[:, 0],
-                      data[:, 1],
-                      u, v,
-                      mask,
-                      data[:, 5],
-                      save_fname,
-                      delimiter = delimiter)
+                 data[:, 1],
+                 u, v,
+                 data[:, 4] + mask,
+                 data[:, 5],
+                 save_fname,
+                 delimiter = delimiter)
+            
             result_fnames.append(save_fname)
         return(result_fnames)
     
@@ -141,20 +188,24 @@ class PostProcessing():
         result_fnames = []
         for i, f in enumerate(self.p['fnames']):
             data = np.loadtxt(f)
+            
             u, v, mask = piv_vld.local_median_val(
                 data[:, 2], data[:, 3],
                 u_threshold=self.p['local_median_threshold'],
                 v_threshold=self.p['local_median_threshold'])
+            
             save_fname = create_save_vec_fname(
                 path=f,
                 postfix='_med_thrhld')
+            
             save(data[:, 0],
-                      data[:, 1],
-                      u, v,
-                      mask,
-                      data[:, 5],
-                      save_fname,
-                      delimiter = delimiter)
+                 data[:, 1],
+                 u, v,
+                 data[:, 4] + mask,
+                 data[:, 5],
+                 save_fname,
+                 delimiter = delimiter)
+            
             result_fnames.append(save_fname)
         return(result_fnames)    
     
@@ -165,21 +216,25 @@ class PostProcessing():
         result_fnames = []
         for i, f in enumerate(self.p['fnames']):
             data = np.loadtxt(f)
+            
             u, v = piv_flt.replace_outliers(
                 np.array([data[:, 2]]), np.array([data[:, 3]]),
                 method=self.p['repl_method'],
                 max_iter=self.p['repl_iter'],
                 kernel_size=self.p['repl_kernel'])
+            
             save_fname = create_save_vec_fname(
                 path=f,
                 postfix='_repl')
+            
             save(data[:, 0],
-                      data[:, 1],
-                      u, v,
-                      data[:, 4],
-                      data[:, 5],
-                      save_fname,
-                      delimiter = delimiter)
+                 data[:, 1],
+                 u, v,
+                 data[:, 4],
+                 data[:, 5],
+                 save_fname,
+                 delimiter = delimiter)
+            
             result_fnames.append(save_fname)
         return(result_fnames)
     
@@ -190,20 +245,27 @@ class PostProcessing():
         result_fnames = []
         for i, f in enumerate(self.p['fnames']):
             data = np.loadtxt(f)
-            u,dummy_u1,dummy_u2,dummy_u3=piv_smt.smoothn(data[:, 2],s=self.p['smoothn_val'], isrobust=self.p['robust'])
-            v,dummy_v1,dummy_v2,dummy_v3=piv_smt.smoothn(data[:, 3],s=self.p['smoothn_val'], isrobust=self.p['robust'])
+            
+            u, dummy_u1, dummy_u2, dummy_u3 = piv_smt.smoothn(data[:, 2],
+                                                              s=self.p['smoothn_val'], 
+                                                              isrobust=self.p['robust'])
+            v, dummy_v1, dummy_v2, dummy_v3 = piv_smt.smoothn(data[:, 3],
+                                                              s=self.p['smoothn_val'],
+                                                              isrobust=self.p['robust'])
+            
             save_fname = create_save_vec_fname(
                 path=f,
                 postfix='_smthn')
+            
             save(data[:, 0],
-                      data[:, 1],
-                      u, v,
-                      mask,
-                      data[:, 5],
-                      save_fname,
-                      delimiter = delimiter)
+                 data[:, 1],
+                 u, v,
+                 data[:, 4],
+                 data[:, 5],
+                 save_fname,
+                 delimiter = delimiter)
+            
             result_fnames.append(save_fname)
-            print(f)
         return(result_fnames)
     
     
@@ -228,4 +290,4 @@ class PostProcessing():
                      delimiter = delimiter)
         print(f)
         return(save_fname)'''
-        return('Averaging of vectors fileds is not implemented.')
+        return('Averaging of vectors fileds is not fully implemented.')
