@@ -1516,12 +1516,16 @@ class pivware():
                 )
         
         start = time.time()
+        #if offset_minimum == True:
+        corr_min = corr.min(axis = (-2,-1)) # avoid negative peaks 
+        corr_min[corr_min > 0] = 0
+        corr -= corr_min[:, np.newaxis, np.newaxis]
         u, v = piv_prc.vectorized_correlation_to_displacements(
             corr, 
             n_rows,
             n_cols,
             subpixel_method=subpixel_method,
-            offset_minimum = offset_correlation
+            #offset_minimum = offset_correlation
         )
         print(f'Found peaks/displacements ({_round(time.time() - start, 6)*1000} milliseconds)')   
         
@@ -1741,12 +1745,16 @@ class pivware():
             #corr = (corr - corr.min()) / (corr.max() - corr.min())
         
         start = time.time()
+        #if offset_minimum == True:
+        corr_min = corr.min(axis = (-2,-1)) # avoid negative peaks 
+        corr_min[corr_min > 0] = 0
+        corr -= corr_min[:, np.newaxis, np.newaxis]
         u, v = piv_prc.vectorized_correlation_to_displacements(
             corr, 
             n_rows,
             n_cols,
             subpixel_method=subpixel_method,
-            offset_minimum = offset_correlation
+            #offset_minimum = offset_correlation
         )
         print(f'Found peaks/displacements ({_round(time.time() - start, 6)*1000} milliseconds)') 
         
