@@ -1,7 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-'''Plotting vector data.'''
+'''Plotting vector data.
+
+This module can be used in two different ways:
+
+1. As a library. Just import the module and call the functions.
+   This is the way, how this module is used in openpivgui, for
+   example.
+
+2. As a terminal-application. Execute 
+   python3 -m openpivgui.vec_plot --help
+   for more information.
+   This is the way, how this module ist used in JPIV, for example.
+   For now, not all functions are callable in this way.
+'''
 
 __licence__ = '''
 This program is free software: you can redistribute it and/or modify
@@ -24,29 +37,55 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib
 from copy import copy
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.figure import Figure
 from matplotlib.colors import LinearSegmentedColormap
-from openpivgui.open_piv_gui_tools import resize_data
+from skimage.measure import points_in_poly
+from openpiv.preprocess import prepare_mask_on_grid as grid_mask
+from openpivgui.open_piv_gui_tools import (coords_to_xymask, 
+    add_disp_roi, add_disp_mask)
 
 # creating a custom rainbow colormap
-short_rainbow = {'red':(
-                 (0.0, 0.0, 0.0),
-                 (0.2, 0.2, 0.2),
-                 (0.5, 0.0, 0.0),
-                 (0.8, 1.0, 1.0),
-                 (1.0, 1.0, 1.0)),
-        'green':((0.0, 0.0, 0.0),
-                 (0.2, 1.0, 1.0),
-                 (0.5, 1.0, 1.0),
-                 (0.8, 1.0, 1.0),
-                 (1.0, 0.0, 0.0)),
-        'blue': ((0.0, 1.0, 1.0),
-                 (0.2, 1.0, 1.0),
-                 (0.5, 0.0, 0.0),
-                 (0.8, 0.0, 0.0),
-                 (1.0, 0.0, 0.0))}
+import matplotlib
+from matplotlib import pyplot as plt
+import numpy as np
+
+# creating a custom rainbow colormap
+#short_rainbow = {'red':(
+#                 (0.0, 0.0, 0.0),
+#                 (0.2, 0.2, 0.2),
+#                 (0.5, 0.0, 0.0),
+#                 (0.8, 1.0, 1.0),
+#                 (1.0, 1.0, 1.0)),
+#        'green':((0.0, 0.0, 0.0),
+#                 (0.2, 1.0, 1.0),
+#                 (0.5, 1.0, 1.0),
+#                 (0.8, 1.0, 1.0),
+#                 (1.0, 0.0, 0.0)),
+#        'blue': ((0.0, 1.0, 1.0),
+#                 (0.2, 1.0, 1.0),
+#                 (0.5, 0.0, 0.0),
+#                 (0.8, 0.0, 0.0),
+#                 (1.0, 0.0, 0.0))}
+
+short_rainbow = {
+        'red':  ((0.0,  0.0, 0.0),
+                 (0.27, 0.0, 0.0),
+                 (0.54, 0.0, 0.0),
+                 (0.80, 1.0, 1.0),
+                 (1.0,  1.0, 1.0)),
+        'green':((0.0,  0.0, 0.0),
+                 (0.27, 1.0, 1.0),
+                 (0.55, 1.0, 1.0),
+                 (0.80, 1.0, 1.0),
+                 (1.0,  0.0, 0.0)),
+        'blue': ((0.0,  1.0, 1.0),
+                 (0.27, 1.0, 1.0),
+                 (0.54, 0.0, 0.0),
+                 (0.80, 0.0, 0.0),
+                 (1.0,  0.0, 0.0))}
 
 long_rainbow = {'red': 
                 ((0.0, 0.0, 0.0),
@@ -77,17 +116,15 @@ long_rainbow = {'red':
 short_rainbow = LinearSegmentedColormap('my_colormap',short_rainbow,256)
 long_rainbow = LinearSegmentedColormap('my_colormap',long_rainbow,256)
 
-
-
-def histogram(data, parameter, figure):
+def histogram(data, figure, quantity, bins, log_y):
     '''Plot an histogram.
 
     Plots an histogram of the specified quantity.
 
     Parameters
     ----------
-    fname : str
-        A filename containing vector data.
+    data : pandas.DataFrame
+        Data to plot.
     figure : matplotlib.figure.Figure
         An (empty) Figure object.
     quantity : str
@@ -97,50 +134,46 @@ def histogram(data, parameter, figure):
     log_scale : boolean
         Use logaritmic vertical axis.
     '''
-    data = data.to_numpy()
-    
-    if parameter['histogram_quantity'] == 'v':
+
+    if quantity == 'v':
         xlabel = 'absolute displacement'
         h_data = np.array([(l[2]**2+l[3]**2)**0.5 for l in data])
-        
-    elif parameter['histogram_quantity'] == 'v_x':
+    elif quantity == 'v_x':
         xlabel = 'x displacement'
         h_data = np.array([l[2] for l in data])
-        
-    else:
+    elif quantity == 'v_y':
         xlabel = 'y displacement'
         h_data = np.array([l[3] for l in data])
-        
     ax = figure.add_subplot(111)
-    
     if log_y:
         ax.set_yscale("log")
-    ax.hist(h_data, 
-            parameter['histogram_bins'], 
-            label = parameter['histogram_quantity'])
+    ax.hist(h_data, bins, label=quantity)
     ax.set_xlabel(xlabel)
     ax.set_ylabel('number of vectors')
     ax.set_title(parameter['plot_title'])
 
-
     
-def profiles(data, fname, figure, parameter):
+def profiles(data, parameter, figure, orientation):
     '''Plot velocity profiles.
 
     Line plots of the velocity component specified.
 
     Parameters
     ----------
+    data : pandas.DataFrame
+        Data to plot.
     fname : str
-        A filename containing vector data.
+        A filename containing vector data. 
+        (will be deprecated in later updates)
     figure : matplotlib.figure.Figure 
         An (empty) Figure object.
     orientation : str 
         horizontal: Plot v_y over x.
         vertical: Plot v_x over y.
     '''
-    #data = data.to_numpy().astype(np.float)
-    data = np.loadtxt(fname)
+    for i in list(data.columns.values):
+        data[i] = data[i].astype(float)
+    data = data.to_numpy().astype(np.float)
     
     dim_x, dim_y = get_dim(data)
     
@@ -148,7 +181,7 @@ def profiles(data, fname, figure, parameter):
     
     ax = figure.add_subplot(111)
     
-    if parameter['profiles_orientation'] == 'horizontal':
+    if orientation == 'horizontal':
         xlabel = 'x position'
         ylabel = 'y displacement'
         
@@ -159,97 +192,171 @@ def profiles(data, fname, figure, parameter):
             #print(len(p))
             ax.plot(range(dim_x), p, '.-')
             
-    else:
+    elif orientation == 'vertical':
         xlabel = 'y position'
         ylabel = 'x displacement'
         
         for i in range(0, dim_x, parameter['profiles_jump']):
             p_data.append(data[i::dim_x,2])
-
+            
         for p in p_data:
             ax.plot(range(dim_y), p, '.-') 
-        
             
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(parameter['plot_title'])
 
-    
 
-def scatter(data, figure):
+def scatter(
+    data, 
+    figure,
+    ax = None,
+    mask_coords = [],
+    title = None,
+    units = ['px', 'dt']
+):
     '''Scatter plot.
 
     Plots v_y over v_x.
 
     Parameters
     ----------
-    fname : str
-        Name of a file containing vector data.
+    data : pandas.DataFrame
+        Data to plot.
     figure : matplotlib.figure.Figure 
         An (empty) Figure object.
-    '''
-    data = data.to_numpy()
+    '''     
+    if len(mask_coords) > 0:
+        mask = coords_to_xymask(data[0], data[1], mask_coords)
+    else:
+        mask = np.ma.nomask
+        
+    u = np.ma.masked_array(data[2], mask = mask)
+    v = np.ma.masked_array(data[3], mask = mask)   
     
-    v_x = data[:,2]
-    v_y = data[:,3]
-    
-    ax = figure.add_subplot(111)
-    
-    ax.scatter(v_x, v_y, label='scatter')
-    
-    ax.set_xlabel('x displacement')
-    ax.set_ylabel('y displacement')
+    if ax == None:
+        ax = figure.add_subplot(111)
+    ax.scatter(u, v, label='scatter',s = 1.5)
+    ax.set_xlabel(f'x displacement [{units[0]}/{units[1]}]')
+    ax.set_ylabel(f'y displacement [{units[0]}/{units[1]}]')
+    if title != None:
+        ax.set_title(title)
 
     
-    
-def vector(data, parameter, figure, invert_yaxis=True, valid_color='blue', 
-           invalid_color='red', **kw):
+def vector(data,
+           figure, 
+           axes,
+           parameter,
+           mask_coords,
+           **kw):
     '''Display a vector plot.
 
     Parameters
     ----------
-    fname : str
-        Pathname of a text file containing vector data.
+    data : pandas.DataFrame
+        Data to plot.
     figure : matplotlib.figure.Figure 
         An (empty) Figure object.
     '''
-    data = data.to_numpy().astype(np.float)
-
+          
     try:
-        invalid = data[:, 4].astype('bool')
+        invalid = data[4].astype('bool')
     except:
-        invalid = np.asarray([True for i in range(len(data))])
+        invalid = np.asarray([True for i in range(len(data[0]))])
 
     # tilde means invert:
     valid = ~invalid
+    ax = axes
+    
+    x = data[0]
+    y = data[1]
+    u = data[2]
+    v = data[3]
+    
+    x = x[::parameter['nthArrY'], ::parameter['nthArrX']] 
+    y = y[::parameter['nthArrY'], ::parameter['nthArrX']] 
+    u = u[::parameter['nthArrY'], ::parameter['nthArrX']]
+    v = v[::parameter['nthArrY'], ::parameter['nthArrX']]
+    
+    if len(mask_coords) > 0:
+        mask = coords_to_xymask(x, y, mask_coords)
+        u = np.ma.masked_array(u, mask)
+        v = np.ma.masked_array(v, mask) 
+        mask = mask.astype(bool)
         
-    ax = figure.add_subplot(111)
-    
-    ax.quiver(data[invalid, 0],
-              data[invalid, 1],
-              data[invalid, 2],
-              data[invalid, 3],
-              color=invalid_color,
-              label='invalid', **kw)
-    
-    ax.quiver(data[valid, 0],
-              data[valid, 1],
-              data[valid, 2],
-              data[valid, 3],
-              color=valid_color,
-              label='valid', **kw)
-    
-    if invert_yaxis:
-        for ax in figure.get_axes():
-            ax.invert_yaxis()
+        if parameter['show_masked_vectors']:
+            ax.plot(
+                x.flat[mask],
+                y.flat[mask],
+                color = parameter['mask_vec'],
+                marker = parameter['mask_vec_style'],
+                linestyle = '',
+                zorder=1,
+            )
+
+    invalid = invalid[::parameter['nthArrY'], ::parameter['nthArrX']]
+    valid = valid[::parameter['nthArrY'], ::parameter['nthArrX']]
+        
+    if parameter['uniform_vector_color']:
+        ax.quiver(x[invalid],
+                  y[invalid],
+                  u[invalid],
+                  v[invalid],
+                  color      = parameter['invalid_color'],
+                  label      = 'invalid', 
+                  headwidth  = parameter['vec_head_width'],
+                  headlength = parameter['vec_head_len'],
+                  pivot      = parameter['vec_pivot'],
+                  **kw,
+                  zorder = 2)
+
+        ax.quiver(x[valid],
+                  y[valid],
+                  u[valid],
+                  v[valid],
+                  color      = parameter['valid_color'],
+                  label      = 'valid', 
+                  headwidth  = parameter['vec_head_width'],
+                  headlength = parameter['vec_head_len'],
+                  pivot      = parameter['vec_pivot'],
+                  zorder     = 3,
+                  **kw)
+    else:
+        
+        cmap = get_cmap(parameter['color_map'])
             
-    ax.set_xlabel('x position')
-    ax.set_ylabel('y position')
-    ax.set_title(parameter['plot_title'])
+        try:
+            vmin = float(parameter['vmin'])
+        except:
+            vmin = None
+        try:
+            vmax = float(parameter['vmax'])
+        except:
+            vmax = None
+            
+        ax.quiver(x,
+                  y,
+                  u,
+                  v,
+                  (u**2 + v **2) ** 0.5,
+                  cmap       = cmap,
+                  clim       = (vmin, vmax), # has no effect? #is brocken?
+                  headwidth  = parameter['vec_head_width'],
+                  headlength = parameter['vec_head_len'],
+                  pivot      = parameter['vec_pivot'],
+                  zorder     = 2,
+                  **kw)
+
     
-    
-    
-def contour(data, parameter, figure):
+def contour(
+    data, 
+    parameter,
+    figure, 
+    axes,
+    color_values, 
+    mask = np.ma.nomask,
+    borders = None,
+):
     '''Display a contour plot    
 
     Parameters
@@ -260,209 +367,123 @@ def contour(data, parameter, figure):
         Parameter-object.
     figure : matplotlib.figure.Figure
        An (empty) Figure object.
-    '''
-    # figure for subplot
-    ax = figure.add_subplot(111)
+    '''        
+    ax = axes
+    x, y = data
     
-    # iteration to set value types to float
-    for i in list(data.columns.values):
-        data[i] = data[i].astype(float)
-        
-    # choosing velocity for the colormap and add it to an new colummn in data
-    if parameter['velocity_color'] == 'vx':
-        data['abs'] = data.vx
-    elif parameter['velocity_color'] == 'vy':
-        data['abs'] = data.vy
+    if parameter['contours_custom_density'] == False:
+        # try to get limits, if not possible set to None
+        try:
+            vmin = float(parameter['vmin'])
+        except:
+            vmin = None
+        try:
+            vmax = float(parameter['vmax'])
+        except:
+            vmax = None
+        # settings for color scheme of the contour plot  
+        if vmax is not None and vmin is not None:
+            levels = np.linspace(vmin, vmax, int(parameter['color_levels']))
+        elif vmax is not None:
+            levels = np.linspace(0, vmax, int(parameter['color_levels']))
+        elif vmin is not None:
+            vmax = color_values.max().max()
+            levels = np.linspace(vmin, vmax, int(parameter['color_levels']))
+        else:
+            levels = int(parameter['color_levels'])
     else:
-        data['abs'] = (data.vx**2+data.vy**2)**0.5
-        
-    
-    # pivot table for contour function    
-    data_pivot = data.pivot(index = 'y',
-                            columns = 'x',
-                            values = 'abs')
-    
-    # try to get limits, if not possible set to None
-    try:
-        vmin = float(parameter['vmin'])
-    except:
-        vmin = None
-    try:
-        vmax = float(parameter['vmax'])
-    except:
-        vmax = None
-        
-    # settings for color scheme of the contour plot  
-    if vmax is not None and vmin is not None:
-        levels = np.linspace(vmin, vmax, int(parameter['color_levels']))
-    elif vmax is not None:
-        levels = np.linspace(0, vmax, int(parameter['color_levels']))
-    elif vmin is not None:
-        vmax = data_pivot.max().max()
-        levels = np.linspace(vmin, vmax, int(parameter['color_levels']))
-    else:
-        levels = int(parameter['color_levels'])
+        levels = parameter['contours_density']
+        try:
+            vmin = float(parameter['vmin'])
+        except:
+            vmin = None
+        try:
+            vmax = float(parameter['vmax'])
+        except:
+            vmax = None
         
     # Choosing the correct colormap
-    if parameter['color_map'] == 'short rainbow':
-        colormap = short_rainbow
-    elif parameter['color_map'] == 'long rainbow':
-        colormap = long_rainbow
-    else:
-        colormap = parameter['color_map']
+    colormap = get_cmap(parameter['color_map'])
+    color_values = np.ma.masked_array(color_values, mask = mask)
         
-    # set contour plot to the variable fig to add a colorbar 
-    if parameter['extend_cbar']:
-        extend = 'both'
-    else:
-        extend = None
-    fig = ax.contourf(data_pivot.columns, 
-                data_pivot.index, 
-                data_pivot.values, 
+    if parameter['contours_type'] == 'filled':
+        if parameter['contours_uniform']:
+            c = ax.contourf(
+                x,
+                y,
+                color_values,
                 levels = levels, 
                 cmap = colormap,
                 vmin = vmin,
                 vmax = vmax,
-                extend = extend)
-    
-    # set the colorbar to the variable cb to add a description
-    cb = plt.colorbar(fig, ax=ax)
-    
-    # set origin to top left or bottom left
-    if parameter['invert_yaxis']:
-        ax.set_ylim(ax.get_ylim()[::-1])
-        
-    # description to the contour lines
-    cb.ax.set_ylabel('Velocity [m/s]')
-    
-    # labels for the axes
-    ax.set_xlabel('x-position')
-    ax.set_ylabel('y-position')
-    
-    # plot title from the GUI
-    ax.set_title(parameter['plot_title'])
-    
-    
-    
-def contour_and_vector(data, parameter, figure, **kw):
-    '''Display a contour plot    
-
-    Parameters
-    ----------
-    data : pandas.DataFrame
-        Data to plot.
-    parameter : openpivgui.OpenPivParams
-        Parameter-object.
-    figure : matplotlib.figure.Figure
-       An (empty) Figure object.
-    '''
-    # figure for subplot
-    ax = figure.add_subplot(111)
-    
-    # iteration to set value types to float
-    for i in list(data.columns.values):
-        data[i] = data[i].astype(float)
-    
-    # choosing velocity for the colormap and add it to an new colummn in data        
-    if parameter['velocity_color'] == 'vx':
-        data['abs'] = data.vx
-    elif parameter['velocity_color'] == 'vy':
-        data['abs'] = data.vy
+                extend = 'both',
+                alpha = parameter['contours_alpha']
+            ) 
+        else:
+            color_values = np.flipud(color_values)
+            c = ax.imshow(
+                color_values,
+                extent = borders,
+                cmap = colormap,
+                vmin = vmin,
+                vmax = vmax,
+                alpha = parameter['contours_alpha'],
+                interpolation = "bilinear",
+            )
+        if parameter['contours_uniform_color']:
+            if parameter['contours_uniform'] != True:
+                color_values = np.flipud(color_values)
+            c2 = ax.contour(
+                x,
+                y,
+                color_values,
+                levels = levels, 
+                colors = parameter['contour_color'],
+                vmin = vmin,
+                vmax = vmax,
+                extend = 'both',
+                linewidths = parameter['contours_thickness'],
+                linestyles = parameter['contours_line_style'],
+                alpha = parameter['contours_alpha']
+            )  
     else:
-        data['abs'] = (data.vx**2+data.vy**2)**0.5
-    
-    # pivot table for contour function    
-    data_pivot = data.pivot(index = 'y',
-                            columns = 'x',
-                            values = 'abs')
-    # try to get limits, if not possible set to None
-    try:
-        vmin = float(parameter['vmin'])
-    except:
-        vmin = None
-    try:
-        vmax = float(parameter['vmax'])
-    except:
-        vmax = None
-        
-    # settings for color scheme of the contour plot  
-    if vmax is not None and vmin is not None:
-        levels = np.linspace(vmin, vmax, int(parameter['color_levels']))
-    elif vmax is not None:
-        levels = np.linspace(0, vmax, int(parameter['color_levels']))
-    elif vmin is not None:
-        vmax = data_pivot.max().max()
-        levels = np.linspace(vmin, vmax, int(parameter['color_levels']))
-    else:
-        levels = int(parameter['color_levels'])
-        
-    # Choosing the correct colormap
-    if parameter['color_map'] == 'short rainbow':
-        colormap = short_rainbow
-    elif parameter['color_map'] == 'long rainbow':
-        colormap = long_rainbow
-    else:
-        colormap = parameter['color_map']
-        
-    # set contour plot to the variable fig to add a colorbar 
-    if parameter['extend_cbar']:
-        extend = 'both'
-    else:
-        extend = None
-    fig = ax.contourf(data_pivot.columns, 
-                data_pivot.index, 
-                data_pivot.values, 
+        if parameter['contours_uniform_color']:
+            c2 = ax.contour(
+                x,
+                y,
+                color_values,
+                levels = levels, 
+                colors = parameter['contour_color'],
+                vmin = vmin,
+                vmax = vmax,
+                extend = 'both',
+                linewidths = parameter['contours_thickness'],
+                linestyles = parameter['contours_line_style'],
+                alpha = parameter['contours_alpha']
+            )    
+        else:
+            c = ax.contour(
+                x,
+                y,
+                color_values,
                 levels = levels, 
                 cmap = colormap,
                 vmin = vmin,
                 vmax = vmax,
-                extend = extend)
+                extend = 'both',
+                linewidths = parameter['contours_thickness'],
+                linestyles = parameter['contours_line_style'],
+                alpha = parameter['contours_alpha']
+            )
+     
     
-    # quiver plot
-    data = data.to_numpy().astype(np.float)
-
-    try:
-        invalid = data[:, 4].astype('bool')
-    except:
-        invalid = np.asarray([True for i in range(len(data))])
-
-    # tilde means invert:
-    valid = ~invalid
-            
-    ax.quiver(data[invalid, 0],
-              data[invalid, 1],
-              data[invalid, 2],
-              data[invalid, 3],
-              color = parameter['invalid_color'],
-              label = 'invalid', **kw)
+def streamlines(
+    data, 
+    figure,
+    parameter,
+    mask = np.ma.nomask,
     
-    ax.quiver(data[valid, 0],
-              data[valid, 1],
-              data[valid, 2],
-              data[valid, 3],
-              color = parameter['valid_color'],
-              label = 'valid', **kw)
-    
-    # set the colorbar to the variable cb to add a description
-    cb = plt.colorbar(fig, ax=ax)
-    
-    # set origin to top left or bottom left
-    if parameter['invert_yaxis']:
-        ax.set_ylim(ax.get_ylim()[::-1])
-        
-    # description to the contour lines
-    cb.ax.set_ylabel('Velocity [m/s]')
-    
-    # labels for the axes
-    ax.set_xlabel('x-position')
-    ax.set_ylabel('y-position')
-    
-    # plot title from the GUI
-    ax.set_title(parameter['plot_title'])    
-    
-    
-    
-def streamlines(data, parameter, figure):
+):
     '''Display a streamline plot.    
 
     Parameters
@@ -474,134 +495,39 @@ def streamlines(data, parameter, figure):
     figure : matplotlib.figure.Figure
         An (empty) Figure object.
     '''
-    ax = figure.add_subplot(111)
-    
-    # make sure all values are from type float
-    for i in list(data.columns.values):
-        data[i] = data[i].astype(float)
+    ax = figure
+    x = data[0]
+    y = data[1]
+    u = np.ma.masked_array(data[2], mask=mask)
+    v = np.ma.masked_array(data[3], mask=mask) 
         
     # get density for streamline plot.
     try:    
-        density = (float(list(parameter['streamline_density'].split(','))[0]),
-            float(list(parameter['streamline_density'].split(','))[1]))
+        density = (float(list(parameter['streamlines_density'].split(','))[0]),
+            float(list(parameter['streamlines_density'].split(','))[1]))
     except:
-        density = float(parameter['streamline_density'])
-        
-    # Choosing the correct colormap
-    if parameter['color_map'] == 'short rainbow':
-        colormap = short_rainbow
-    elif parameter['color_map'] == 'long rainbow':
-        colormap = long_rainbow
-    else:
-        colormap = parameter['color_map']
-        
-    # pivot table for streamline plot
-    data_vx = data.pivot(index = 'y',
-                         columns = 'x',
-                         values = 'vx')
-    data_vy = data.pivot(index = 'y',
-                         columns = 'x',
-                         values = 'vy')
-
-    # choosing data for the colormap
-    if parameter['velocity_color'] == 'vx':
-        color_values = data_vx.values
-    elif parameter['velocity_color'] == 'vy':
-        color_values = data_vy.values
-    else:
-        color_values = (data_vx.values**2+data_vy.values**2)**0.5
-    
-    # try to create streamline plot. If values are not equally spaced the 
-    # exception will space the values equally (mean difference is 
-    # calculated.)          
+        density = float(parameter['streamlines_density'])         
 
     try:
-        fig = ax.streamplot(data_vx.columns,
-                  data_vx.index,
-                  data_vx.values,
-                  data_vy.values,
-                  density = density,   
-                  color = color_values,
-                  cmap = colormap, 
-                  integration_direction = parameter['integrate_dir'],
-                  linewidth = parameter['vec_width'])
-    except:
-        # get dimension of the DataFrame
-        dim = [len(set(data.x)), len(set(data.y))]
-        
-        # calculate mean difference for x and y values
-        diff = [round(np.mean(
-            [data.x[i+1]-data.x[i] for i in range(dim[0]-1)]),6), 
-            round(np.mean([data.y[dim[0]*(i+1)]-data.y[dim[0]*i] 
-                            for i in range(dim[1]-1)]),6)]
-        
-        # this list is initialized with starting values and will be added by 
-        # equally spaced values.
-        cache = [round(copy(data.x[0]),6), round(copy(data.y[0]),6)]
-        
-        # nested lists with equally spaced coordinates
-        coordinates = [[],[]]
-        
-        # loop for calculating the new x data
-        j=1
-        for i in range(1,len(data)):
-            if i == dim[0]*j:
-                coordinates[0].append(round(cache[0],6))
-                cache[0] = coordinates[0][0]
-                j+=1
-            else:
-                coordinates[0].append(round(cache[0],6))
-                cache[0]+=diff[0]
-        coordinates[0].append(round(cache[0],6))
-            
-        # loop for calculating the new y data
-        j=1
-        for i in range(len(data)):
-            if i == dim[0]*j:
-                cache[1]+=diff[1]
-                coordinates[1].append(round(cache[1],6))
-                j+=1
-            else:
-                coordinates[1].append(round(cache[1],6))
-                
-        # overwrite the old x and y values with the new ones
-        data.x = coordinates[0]
-        data.y = coordinates[1]
-        
-        # choosing data for the colormap
-        if parameter['velocity_color'] == 'vx':
-            color_values = data_vx.values
-        elif parameter['velocity_color'] == 'vy':
-            color_values = data_vy.values
-        else:
-            color_values = (data_vx.values**2+data_vy.values**2)**0.5
-            
-        # new streamline plot with equally spaced coordinates
-        fig = ax.streamplot(data_vx.columns,
-                            data_vx.index,
-                            data_vx.values,
-                            data_vy.values,
-                            density = density,
-                            color = color_values,
-                            cmap = colormap,
-                            integration_direction = parameter['integrate_dir'],
-                            linewidth = parameter['vec_width'])
-    # add colorbar   
-    cb = plt.colorbar(fig.lines, ax=ax)
-    cb.ax.set_ylabel('Velocity [m/s]')
-    
-    # set origin to top left or bottom left
-    if parameter['invert_yaxis']:
-        ax.set_ylim(ax.get_ylim()[::-1])
-        
-    # add diagram options    
-    ax.set_xlabel('x-position')
-    ax.set_ylabel('y-position')
-    ax.set_title(parameter['plot_title'])
-        
-    
 
-def pandas_plot(data, parameter, figure):
+        fig = ax.streamplot(
+            x,
+            y,
+            u,
+            v,
+            density    = density,   
+            color      = parameter['streamlines_color'],
+            integration_direction = parameter['integrate_dir'],
+            linewidth  = parameter['streamlines_thickness'],
+            arrowstyle = parameter['streamlines_arrow_style'],
+            arrowsize  = parameter['streamlines_arrow_width'],
+            zorder = 4,
+        )
+    except:
+        print("Failed to display streamlines.")
+        
+    
+def pandas_plot(data, parameter, plot_type, figure):
     '''Display a plot with the pandas plot utility.
     
     Parameters
@@ -649,7 +575,7 @@ def pandas_plot(data, parameter, figure):
     for i in list(data.columns.values):
         data[i] = data[i].astype(float)
         
-    if parameter['plot_type'] == 'histogram':
+    if plot_type == 'histogram':
         # get column names as a list for comparing with chosen histogram
         # quantity
         col_names = list(data.columns.values)
@@ -672,12 +598,12 @@ def pandas_plot(data, parameter, figure):
         ax.legend()
         ax.set_xlabel('velocity [m/s]')
         ax.set_ylabel('number of vectors')
-        ax.set_title(parameter['plot_title'])
+        #ax.set_title(parameter['plot_title'])
     else:
         data.plot(x = parameter['u_data'], 
               y = parameter['v_data'], 
               kind = parameter['plot_type'], 
-              title = parameter['plot_title'], 
+              #title = parameter['plot_title'], 
               grid = parameter['plot_grid'], 
               legend = parameter['plot_legend'],
               logx = logx, 
@@ -686,18 +612,80 @@ def pandas_plot(data, parameter, figure):
               xlim = xlim,
               ylim = ylim,
               ax = ax)
+
+def hist2(
+    data, 
+    parameter, 
+    figure,
+    units,
+    mask_coords = [],
+    title = None
+):
+    '''Display a plot with the pandas plot utility.
     
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        Data to plot.
+    parameter : openpivgui.OpenPivParams
+        Parameter-object.
+    figure : matplotlib.figure.Figure
+        An (empty) figure.
+
+    Returns
+    -------
+    None.
+
+    '''
+    # set boolean for chosen axis scaling
+    if parameter['plot_scaling'] == 'None':
+        log = False
+    else:
+        log = True
+    # add subplot    
+    ax = figure.add_subplot(111)
+
+    if len(mask_coords) > 0:
+        mask = coords_to_xymask(data[0], data[1], mask_coords)
+    else:
+        mask = np.ma.nomask
+        
+    if parameter['histogram_quantity'] == 'u-component':
+        data_hist = data[2]
+    elif parameter['histogram_quantity'] == 'v-component':
+        data_hist = data[3]
+    elif parameter['histogram_quantity'] == 'magnitude':
+        data_hist = np.hypot(data[2], data[3])
     
+    data_hist = np.ma.masked_array(data = data_hist, mask = mask)
+    
+    data_hist = np.vstack(data_hist.ravel())
+               
+    # histogram plot
+    ax.hist(data_hist,
+            bins = int(parameter['histogram_bins']),
+            label = parameter['histogram_quantity'],
+            log = log,
+            histtype = parameter['histogram_type'],
+            )
+    ax.grid(parameter['plot_grid'])
+    ax.legend()
+    ax.set_xlabel(f'velocity [{units[0]}/{units[1]}]')
+    ax.set_ylabel('number of vectors')
+    if title != None:
+        ax.set_title(title)
+
     
 def get_dim(array):
     '''Computes dimension of vector data.
 
     Assumes data to be organised as follows (example):
-    x  y  v_x v_y
-    16 16 4.5 3.2
-    32 16 4.3 3.1
-    16 32 4.2 3.5
-    32 32 4.5 3.2
+    x  y  v_x v_y ..
+    16 16 4.5 3.2 ..
+    32 16 4.3 3.1 ..
+    16 32 4.2 3.5 ..
+    32 32 4.5 3.2 ..
+    .. .. ..  ..
 
     Parameters
     ----------
@@ -712,7 +700,108 @@ def get_dim(array):
     return(len(set(array[:, 0])),
            len(set(array[:, 1])))
 
-                      
+
+def get_cmap(cmap):
+    if cmap == 'short rainbow':
+        colormap = short_rainbow
+    elif cmap == 'long rainbow':
+        colormap = long_rainbow
+    else:
+        colormap = cmap
+    return colormap
+
+
+def get_component(x, y, u, v, component = 'magnitude'):
+    if component   == 'u-component':
+        component = u
+    elif component == 'v-component':
+        component = v
+    elif component == 'magnitude':
+        component = (u**2 + v**2)**0.5
+    elif component == 'vorticity': 
+        vx, vy = np.gradient(v.T, x[0, :], y[:, 0])
+        ux, uy = np.gradient(u.T, x[0, :], y[:, 0])
+        vort = vx - uy
+        component = -vort.T
+    elif component ==  'enstrophy': 
+        vx, vy = np.gradient(v.T, x[0, :], y[:, 0])
+        ux, uy = np.gradient(u.T, x[0, :], y[:, 0])
+        vort = vx - uy
+        component = vort.T ** 2
+    elif component == 'divergence': 
+        vx, vy = np.gradient(v.T, x[0, :], y[:, 0])
+        ux, uy = np.gradient(u.T, x[0, :], y[:, 0])
+        component = (vy + ux).T
+    elif component == 'shear strain':
+        vx, vy = np.gradient(v.T, x[0, :], y[:, 0])
+        ux, uy = np.gradient(u.T, x[0, :], y[:, 0])
+        strain = vx + uy
+        component = -strain.T
+    elif component == 'normal strain':
+        vx, vy = np.gradient(v.T, x[0, :], y[:, 0])
+        ux, uy = np.gradient(u.T, x[0, :], y[:, 0])
+        strain = ux + vy
+        component = strain.T
+    elif component == 'acceleration':
+        vx, vy = np.gradient(v.T, x[0, :], y[:, 0])
+        ux, uy = np.gradient(u.T, x[0, :], y[:, 0])
+        component = np.sqrt( # hopefully, this is correct...
+            np.power(((u.T * ux) + (v.T * uy)), 2) +
+            np.power(((u.T * vx) + (v.T * vy)), 2)
+        ).T
+    elif component == 'kinetic energy':
+        component = u**2 + v**2
+    elif component == 'gradient dv/dx':
+        component, _ = np.gradient(v.T, x[0, :], y[:, 0])
+        component = component.T
+    elif component == 'gradient dv/dy':
+        _, component = np.gradient(v.T, x[0, :], y[:, 0])
+        component = component.T
+    elif component == 'gradient du/dx':
+        component, _ = np.gradient(u.T, x[0, :], y[:, 0])
+        component = component.T
+    elif component == 'gradient du/dy':
+        _, component = np.gradient(u.T, x[0, :], y[:, 0])
+        component = component.T
+    else:
+        print('Component not supported.')
+        component = np.hypot(u, v)
+    return component
+        
+    
+def plot_colorbar(
+    fig, 
+    component,
+    cbaxis = None,
+    cmap = 'viridis',
+    vmin = None,
+    vmax = None,
+):
+    if cbaxis == None:
+        n = [0.05, 0.05, 0.9, 0.05]
+        #n = [0,0,1,0.05]
+        cbaxis = fig.add_axes(n)
+    if vmin == None:
+        vmin = np.nanmin(component)
+    if vmax == None:
+        vmax = np.nanmax(component)
+    c = plt.cm.ScalarMappable(
+        cmap = cmap,
+        norm = plt.Normalize(
+            vmin = vmin,
+            vmax = vmax
+        )
+    )
+    cb = fig.colorbar(
+        c,
+        cax = cbaxis,
+        orientation = 'horizontal',
+        #extendrect = True
+        #pad = .05
+    )
+    cb.ax.xaxis.set_ticks_position('top')
+    cb.ax.xaxis.set_label_position('top')
+'''
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Plot vector data.')
     parser.add_argument('--plot_type',
@@ -721,7 +810,10 @@ if __name__=="__main__":
                         choices=['histogram',
                                  'profiles',
                                  'vector',
-                                 'scatter'],
+                                 'scatter',
+                                 'contour'
+                                 'contour_and_vector',
+                                 'streamlines'],
                         default='vector',
                         help='type of plot')
     parser.add_argument('--fname',
@@ -757,21 +849,30 @@ if __name__=="__main__":
                         default=True,
                         help='Invert y-axis of vector plot')
     args = parser.parse_args()
+    data = np.loadtxt(args.fname)
     fig = Figure()
     if args.plot_type=='histogram':
-        histogram(args.fname,
+        histogram(data,
                   fig,
                   quantity=args.quantity,
                   bins=args.bins,
                   log_y=args.log_y)
     elif args.plot_type=='profiles':
-        profiles(args.fname,
+        profiles(data,
                  fig,
                  orientation=args.orientation)
     elif args.plot_type=='vector':
-        vector(args.fname,
+        vector(data,
                fig,
                invert_yaxis=args.invert_yaxis)
     elif args.plot_type=='scatter':
-        scatter(args.fname, fig)
+        scatter(data,
+                fig)
+    elif args.plot_type=='contour':
+        print('Not yet implemented')
+    elif args.plot_type=='contour_and_vector':
+         print('Not yet implemented')
+    elif args.plot_type=='streamlines':
+         print('Not yet implemented')
     plt.show()
+'''
