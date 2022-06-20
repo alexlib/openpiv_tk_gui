@@ -802,7 +802,9 @@ class OpenPivGui(tk.Tk):
         '''
         pattern_lst = str2list(self.p['navi_pattern'])
         dirname = os.path.dirname(self.p['fnames'][0])
-        files = os.listdir(dirname)
+        files = [_.lower() for _ in os.listdir(dirname)]
+        # files = self.p['fnames']
+
         if direction == 'back':
             self.p.navi_position -= 1
             if self.p.navi_position == -1:
@@ -811,13 +813,22 @@ class OpenPivGui(tk.Tk):
             self.p.navi_position += 1
             if self.p.navi_position == len(pattern_lst):
                 self.p.navi_position = 0
+        
         filtered = (self.file_filter(
                     files,
                     pattern_lst[self.p.navi_position]))
+        _list_p = pattern_lst[self.p.navi_position]
+        print(str(_list_p) + ": ")
+        print(filtered)
+
         if filtered != []:
             filtered = sorted([dirname + os.sep + f for f in filtered])
             self.tkvars['fnames'].set(filtered)
             self.get_settings()
+
+        _list_p = pattern_lst[self.p.navi_position]
+        print(str(_list_p) + ": ")
+        print(filtered)
 
         # try next filter, if result is empty
         else:
