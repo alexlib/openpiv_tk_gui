@@ -825,11 +825,6 @@ class OpenPivGui(tk.Tk):
             filtered = sorted([dirname + os.sep + f for f in filtered])
             self.tkvars['fnames'].set(filtered)
             self.get_settings()
-
-        _list_p = pattern_lst[self.p.navi_position]
-        print(str(_list_p) + ": ")
-        print(filtered)
-
         # try next filter, if result is empty
         else:
             self.navigate(direction)
