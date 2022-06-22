@@ -13,7 +13,7 @@ from openpivgui.MultiProcessing import MultiProcessing
 from openpivgui.CreateToolTip import CreateToolTip
 from openpivgui.OpenPivParams import OpenPivParams
 import openpivgui.AddInHandler as AddInHandler
-from scipy.ndimage.filters import gaussian_filter, gaussian_laplace
+from scipy.ndimage import gaussian_filter, gaussian_laplace
 from matplotlib.figure import Figure as Fig
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.backends.backend_tkagg import (
@@ -100,10 +100,10 @@ class OpenPivGui(tk.Tk):
         2. Click on the links in the file-list on the right to inspect
            the images.
 
-        3. Walk through the drop-down-menues »General«, »Preprocessing«,
+        3. Walk through the drop-down-menus »General«, »Preprocessing«,
            and »Analysis« and edit the parameters.
 
-        4. Press the »start processing« butten (bottom left), to
+        4. Press the »start processing« button (bottom left), to
            start the processing chain.
 
         5. Inspect the results by clicking on the links in the file-list.
